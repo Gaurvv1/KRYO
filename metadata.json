@@ -1,0 +1,7 @@
+{
+  "name": "KRYO",
+  "description": "KRYO turns your photos into stylish, edgy crypto memes powered by AI. Upload a selfie, pick your vibe, and get a bold, viral-ready meme in seconds.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
