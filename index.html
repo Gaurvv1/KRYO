@@ -1,45 +1,85 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8"/>
-  <title>Kryo – Crypto Meme Preview</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="min-h-screen bg-slate-950 text-slate-50 flex items-center justify-center">
-  <div class="w-full max-w-xl bg-slate-900/80 rounded-2xl p-6 shadow-xl">
-    <h1 class="text-2xl font-bold mb-2">Kryo is live 🎉</h1>
-    <p class="text-sm text-slate-300 mb-4">
-      Your Vercel deploy is working. This is a working frontend.
-    </p>
+<script>
+/*
+  Frontend script for Kryo:
+  - collects controls from the page
+  - builds the payload (shape above)
+  - POSTs to /api/generate-meme
+  - shows the JSON response in the "out" <pre>
+*/
 
-    <label class="block text-sm mb-1 font-medium">Enter inspiration</label>
-    <textarea id="textIn" rows="3"
-      class="w-full rounded-lg px-3 py-2 bg-slate-800 border border-slate-700 text-sm"
-      placeholder="e.g. My wife says no to party with friends"></textarea>
+/* Helpers */
+const $ = id => document.getElementById(id);
+let regenCount = 0;
 
-    <button id="genBtn"
-      class="mt-3 inline-flex items-center gap-1 rounded-lg bg-cyan-400 text-slate-900 font-semibold px-4 py-2 text-sm">
-      Generate (dummy)
-    </button>
+// safe default getters (works even if advanced controls not present)
+function getValueOr(id, fallback) {
+  const el = document.getElementById(id);
+  if (!el) return fallback;
+  if (el.type === 'checkbox') return el.checked;
+  return el.value || fallback;
+}
 
-    <pre id="out"
-      class="mt-4 text-xs bg-slate-950/70 border border-slate-800 rounded-lg p-3 overflow-x-auto h-40">
-Click “Generate (dummy)” to test the backend.
-    </pre>
-  </div>
+async function callGenerate() {
+  // Collect values from UI. Make sure your index.html has inputs with these IDs
+  const imageUrl = getValueOr('uploadedImageUrl',''); // optional hidden input if you implement uploads
+  const labels = getValueOr('labels','');             // optional, server can compute
+  const text_context = getValueOr('textIn','').trim();
+  const vibe = getValueOr('vibe','funny');
+  const length = getValueOr('mLength','medium');
+  const color_mode = getValueOr('colorMode','auto');
+  const primary_color = getValueOr('primaryColor','#FFD700');
+  const secondary_color = getValueOr('secondaryColor','#8A2BE2');
+  const shade_intensity = parseFloat(getValueOr('shade','0.6')) || 0.6;
+  const direct_generate = getValueOr('directToggle', false);
+  const regenerate_count = regenCount;
 
-  <script>
-    document.getElementById('genBtn').onclick = async () => {
-      const text = document.getElementById('textIn').value;
-      const res = await fetch('/api/generate-meme', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text_context: text })
-      });
-      const json = await res.json();
-      document.getElementById('out').textContent = JSON.stringify(json, null, 2);
-    };
-  </script>
-</body>
-</html>
+  const payload = {
+    imageUrl,
+    labels,
+    text_context,
+    vibe,
+    length,
+    color_mode,
+    primary_color,
+    secondary_color,
+    shade_intensity,
+    direct_generate,
+    regenerate_count
+  };
+
+  // show loading
+  const out = $('out');
+  out.textContent = 'Generating...';
+
+  try {
+    const res = await fetch('/api/generate-meme', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    const json = await res.json();
+    out.textContent = JSON.stringify(json, null, 2);
+
+    // increment regen counter only on successful call (so next regen differs)
+    regenCount++;
+
+    // If server returned meme_text and overlay_style, you can call a render function here
+    // e.g. renderOverlayOnCanvas(json.meme_text, json.overlay_style)
+  } catch (err) {
+    out.textContent = 'Network or server error: ' + (err.message || err);
+  }
+}
+
+/* wire the button (your index.html has button id="genBtn") */
+const genBtn = $('genBtn');
+if (genBtn) {
+  genBtn.addEventListener('click', () => {
+    callGenerate();
+  });
+}
+
+/* If you want a regenerate button separately, use:
+   const regenBtn = $('regenerateBtn'); regenBtn.onclick = callGenerate;
+*/
+</script>
